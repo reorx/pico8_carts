@@ -41,8 +41,13 @@ function actor_type:new(tx, ty)
         halfwidth = 0.5,
         halfheight = 0.5,
         spr = 0,
+        spr_w = 1,
+        spr_h = 1,
+        spr_flip_x = false,
+        spr_flip_y = false,
         frame = 0,
         frames = 7,
+        ticks_per_frame = 3,
         inertia = 0.8,
         moveunit = 0.06,
         tick = 0,
@@ -51,41 +56,55 @@ function actor_type:new(tx, ty)
     return setmetatable(actor, self)
 end
 
+function actor_type:update()
+    self.tx += self.dx
+    self.ty += self.dy
+    if (self.tx > 16) self.tx = 16
+    if (self.ty > 16) self.ty = 16
+
+    -- frame
+    self.frame = flr(self.tick / self.ticks_per_frame) % self.frames
+    -- tick
+    self.tick += 1
+end
+
 function actor_type:draw()
     local x = self.tx * 8
     local y = self.ty * 8
-    spr(self.spr + self.frame, x, y)
+    spr(self.spr + self.frame, x, y, self.spr_w, self.spr_h, self.spr_flip_x, self.spr_flip_y)
 end
 
 cube_type = actor_type:new(0, 0)
 
-function cube_type:control()
+function cube_type:update()
     -- calculate dx, dy
     local _f = flr(self.tick / 2) % 2
     local moving = 0
     if btn(0) then
         self.dx -= self.moveunit
-        self.spr = 8 + _f
+        self.spr = 8
         moving += 1
     end
     if btn(1) then
         self.dx += self.moveunit
-        self.spr = 6 + _f
+        self.spr = 6
         moving += 1
     end
     if btn(2) then
         self.dy -= self.moveunit
-        self.spr = 10 + _f
+        self.spr = 10
         moving += 1
     end
     if btn(3) then
         self.dy += self.moveunit
-        self.spr = 4 + _f
+        self.spr = 4
         moving += 1
     end
     if moving == 0 then
-        self.spr = 16 + flr(self.tick / 5) % 4
+        self.spr = 16
+        _f = flr(self.tick / 5) % 4
     end
+    self.frame = _f
     -- slow down double direction moving
     if moving > 1 then
         self.dx *= 0.8
@@ -112,13 +131,69 @@ function cube_type:control()
     self.tick += 1
 end
 
+-- store all bullets
+bullets = {}
+bullet_spd = 0.2
+
+function new_bullet(tx, ty)
+    local b = actor_type:new(tx, ty)
+    b.spr = 32
+    b.frames = 3
+    b.ticks_per_frame = 8
+    return b
+end
+
+function random_bullet()
+    local b = new_bullet(0, 0)
+    -- get side
+    local side = flr(rnd(4))
+    if side == 0 then
+        -- left
+        b.tx = -1
+        b.ty = flr(rnd(12)) + 1
+        b.dx = bullet_spd
+    elseif side == 1 then
+        -- top
+        b.spr = 35
+        b.tx = flr(rnd(12)) + 1
+        b.ty = -1
+        b.dy = bullet_spd
+        b.spr_flip_y = true
+    elseif side == 2 then
+        -- right
+        b.tx = 15
+        b.ty = flr(rnd(13)) + 1
+        b.dx = -bullet_spd
+        b.spr_flip_x = true
+    elseif side == 3 then
+        -- bottom
+        b.spr = 35
+        b.tx = flr(rnd(13)) + 1
+        b.ty = 15
+        b.dy = -bullet_spd
+    end
+    return b
+end
+
+function move_bullet(b)
+    b:update()
+    if b.tx == 16 or b.ty == 16 then
+        del(bullets, b)
+    end
+end
+
 function _init()
-    cube = cube_type:new(1, 1)
+    cube = cube_type:new(7.5, 6.5)
     cube.spr = 2
 end
 
 function _update()
-    cube:control()
+    cube:update()
+
+    if (cube.tick / 10) % 1 == 0 then
+        add(bullets, random_bullet())
+    end
+    foreach(bullets, move_bullet)
 end
 
 function _draw()
@@ -126,6 +201,10 @@ function _draw()
     rectfill(0,0,127,127,6)
     map(0,0,0,0,16,14)
     cube:draw()
+
+    for k, b in pairs(bullets) do
+        b:draw()
+    end
     debug()
 end
 
@@ -158,14 +237,14 @@ __gfx__
 0cccccc00cccccc00cccccc00cccccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00cccc0000cccc0000cccc0000cccc00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 000cc000000cc000000cc000000cc000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-ee8822008822ee0022ee880000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0ee8822008822ee0022ee88000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00ee8822008822ee0022ee8800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000ee8820008822e00022ee800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000ee8820008822e00022ee800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00ee8822008822ee0022ee8800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0ee8822008822ee0022ee88000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-ee8822008822ee0022ee880000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+ee8822008822ee0022ee88000022220000eeee000088880000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0ee8822008822ee0022ee880022882200ee22ee0088ee88000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00ee8822008822ee0022ee8822888822ee2222ee88eeee8800000000000000000000000000000000000000000000000000000000000000000000000000000000
+000ee8820008822e00022ee8288ee882e228822e8ee22ee800000000000000000000000000000000000000000000000000000000000000000000000000000000
+000ee8820008822e00022ee888eeee8822888822ee2222ee00000000000000000000000000000000000000000000000000000000000000000000000000000000
+00ee8822008822ee0022ee888ee00ee828800882e220022e00000000000000000000000000000000000000000000000000000000000000000000000000000000
+0ee8822008822ee0022ee880ee0000ee880000882200002200000000000000000000000000000000000000000000000000000000000000000000000000000000
+ee8822008822ee0022ee8800e000000e800000082000000200000000000000000000000000000000000000000000000000000000000000000000000000000000
 444999aaaa99944444444444aaaaaaaa44444444444999aa44444444aa9994440000000000000000000000000000000000000000000000000000000d0000000d
 444999aaaa99944444444444aaaaaaaa44444444444999aa44444444aa9994440000000000000000000000000000000000000000000000000000000d0000000d
 444999aaaa9994444444444499999999444444444449999944444444999994440000000000000000000000000000000000000000000000000000000d0000000d
