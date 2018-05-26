@@ -148,19 +148,16 @@ end
 function cube_type:update_by_invincible()
     if self.invincible > 0 then
         self.spr = 1
-        self.frame = 0
+        self.frame = flr(self.tick / 2) % 2
     end
 end
 
 function cube_type:colide_with_bullet(b)
+    -- reduce bullet size from 8x8 to 7x7
     local bltx = b.tx + 0.125
-    local blty = b.ty + 0.125
+    local blty = b.ty + b.height - 0.125
     local brtx = b.tx + b.width - 0.125
-    local brty = b.ty + b.height - 0.125
-    -- local bltx = b.tx
-    -- local blty = b.ty + b.height
-    -- local brtx = b.tx + b.width
-    -- local brty = b.ty
+    local brty = b.ty + 0.125
 
     local cltx = cube.tx
     local clty = cube.ty + cube.height
