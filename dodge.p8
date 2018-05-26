@@ -3,12 +3,9 @@ version 16
 __lua__
 -- dodge
 
--- wall
-
 -- for any given point on the
 -- map, true if there is wall
 -- there.
-
 function is_point_solid(tx, ty)
     -- grab the cell value
     local v = mget(tx, ty)
@@ -36,10 +33,8 @@ function actor_type:new(tx, ty)
         ty = ty,
         dx = 0,
         dy = 0,
-        width = 0.89,
-        height = 0.99,
-        halfwidth = 0.5,
-        halfheight = 0.5,
+        width = 1,
+        height = 1,
         spr = 0,
         spr_w = 1,
         spr_h = 1,
@@ -82,6 +77,10 @@ function cube_type:init()
     self.spr = 2
     self.life = 3
     self.score = 0
+    self.invincible = 0
+    -- reduce 0.01 to make right/bottom side gap work properly
+    self.width = 0.89
+    self.height = 0.99
 end
 
 function cube_type:update()
@@ -120,6 +119,7 @@ function cube_type:update()
     end
 
     -- update tx, ty
+    -- determine wall
     if is_nearby_solid(self.tx+self.dx, self.ty, self.width, self.height) then
         self.dx *= -1
     else
@@ -135,11 +135,52 @@ function cube_type:update()
     self.dx *= self.inertia
     self.dy *= self.inertia
 
+    if self.tick % 30 == 0 then
+        if (self.invincible > 0) self.invincible -= 1
+        self.score += 1
+    end
+
     -- tick
     self.tick += 1
+end
 
-    if self.tick % 30 == 0 then
-        self.score += 1
+-- called after `update()`
+function cube_type:update_by_invincible()
+    if self.invincible > 0 then
+        self.spr = 1
+        self.frame = 0
+    end
+end
+
+function cube_type:colide_with_bullet(b)
+    local bltx = b.tx + 0.125
+    local blty = b.ty + 0.125
+    local brtx = b.tx + b.width - 0.125
+    local brty = b.ty + b.height - 0.125
+    -- local bltx = b.tx
+    -- local blty = b.ty + b.height
+    -- local brtx = b.tx + b.width
+    -- local brty = b.ty
+
+    local cltx = cube.tx
+    local clty = cube.ty + cube.height
+    local crtx = cube.tx + cube.width
+    local crty = cube.ty
+
+    local is_collided = true
+    if cltx > brtx or bltx > crtx then
+        is_collided = false
+    end
+    if clty < brty or blty < crty then
+        is_collided = false
+    end
+
+    if is_collided then
+        self.invincible = 2
+        self.life -= 1
+        if self.life == 0 then
+            game_over()
+        end
     end
 end
 
@@ -187,45 +228,6 @@ function random_bullet()
     return b
 end
 
-function move_bullet(b)
-    b:update()
-end
-
-function _init()
-    cube = cube_type:new(7.5, 6.5)
-    cube:init()
-end
-
-function _update()
-    cube:update()
-
-    if (cube.tick / 10) % 1 == 0 then
-        add(bullets, random_bullet())
-    end
-    for b in all(bullets) do
-        b:update()
-        if b.tx == 16 or b.ty == 16 or b.tx == -1 or b.ty == -1 then
-            del(bullets, b)
-        end
-    end
-end
-
-function _draw()
-    cls()
-    map(0,0,0,0,16,14)
-    cube:draw()
-
-    -- bullets
-    for b in all(bullets) do
-        b:draw()
-    end
-
-    -- panel
-    draw_panel()
-
-    -- debug()
-end
-
 panel_y0 = 111
 panel_text_x0 = 8
 panel_text_y0 = 117
@@ -252,6 +254,64 @@ end
 function debug()
 	dprint("tx:"..cube.tx.." dx:"..cube.dx.." bullets:"..#bullets, 1)
 	dprint("ty:"..cube.ty.." dy:"..cube.dy, 0)
+end
+
+is_game_over = false
+function game_over()
+    is_game_over = true
+end
+
+-- pico8 functions
+
+function _init()
+    cube = cube_type:new(7.5, 6.5)
+    cube:init()
+end
+
+function _update()
+    if is_game_over then
+        return
+    end
+
+    cube:update()
+
+    if (cube.tick / 10) % 1 == 0 then
+        add(bullets, random_bullet())
+    end
+    for b in all(bullets) do
+        b:update()
+        if b.tx == 16 or b.ty == 16 or b.tx == -1 or b.ty == -1 then
+            del(bullets, b)
+        else
+            if cube.invincible == 0 then
+                cube:colide_with_bullet(b)
+            end
+        end
+    end
+
+    cube:update_by_invincible()
+end
+
+function _draw()
+    cls()
+    if is_game_over then
+        print("game over")
+        print("score: "..cube.score)
+        return
+    end
+
+    map(0,0,0,0,16,14)
+    cube:draw()
+
+    -- bullets
+    for b in all(bullets) do
+        b:draw()
+    end
+
+    -- panel
+    draw_panel()
+
+    -- debug()
 end
 __gfx__
 00000000000cc0000000000000000000000cc000070cc070070cc000000cc000000cc070000cc000000cc000000cc00000000000000000000000000000000000
