@@ -60,7 +60,9 @@ function actor_type:update()
     self.tx += self.dx
     self.ty += self.dy
     if (self.tx > 16) self.tx = 16
+    if (self.tx < -1) self.tx = -1
     if (self.ty > 16) self.ty = 16
+    if (self.ty < -1) self.ty = -1
 
     -- frame
     self.frame = flr(self.tick / self.ticks_per_frame) % self.frames
@@ -177,9 +179,6 @@ end
 
 function move_bullet(b)
     b:update()
-    if b.tx == 16 or b.ty == 16 then
-        del(bullets, b)
-    end
 end
 
 function _init()
@@ -193,7 +192,9 @@ function _update()
     if (cube.tick / 10) % 1 == 0 then
         add(bullets, random_bullet())
     end
-    foreach(bullets, move_bullet)
+    for b in all(bullets) do
+        b:update()
+    end
 end
 
 function _draw()
@@ -202,8 +203,12 @@ function _draw()
     map(0,0,0,0,16,14)
     cube:draw()
 
-    for k, b in pairs(bullets) do
-        b:draw()
+    for b in all(bullets) do
+        if b.tx == 16 or b.ty == 16 or b.tx == -1 or b.ty == -1 then
+            del(bullets, b)
+        else
+            b:draw()
+        end
     end
     debug()
 end
@@ -217,8 +222,8 @@ function dprint(s, index)
 end
 
 function debug()
-	dprint("tx: "..cube.tx.." dx:"..cube.dx, 1)
-	dprint("ty: "..cube.ty.." dy:"..cube.dy, 0)
+	dprint("tx:"..cube.tx.." dx:"..cube.dx.." bullets:"..#bullets, 1)
+	dprint("ty:"..cube.ty.." dy:"..cube.dy, 0)
 end
 __gfx__
 00000000000cc0000000000000000000000cc000070cc070070cc000000cc000000cc070000cc000000cc000000cc00000000000000000000000000000000000
