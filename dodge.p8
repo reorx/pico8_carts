@@ -10,6 +10,7 @@ __lua__
 -- [ ] add heat bar (heat increases over time, the greater heat, the more bullets)
 -- [ ] add dying animation
 -- [ ] prettify game over, add option for restart
+-- [ ] score board
 
 -- for any given point on the
 -- map, true if there is wall
@@ -300,11 +301,12 @@ end
 function _draw()
     cls()
     if is_game_over then
-        print("game over")
         print("")
-        print("score: "..cube.score)
+        print("  game over")
         print("")
-        print("thanks for playing :)")
+        print("  score: "..cube.score)
+        print("")
+        print("  thanks for playing :)")
         return
     end
 
